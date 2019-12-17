@@ -1,13 +1,13 @@
 FROM nexus-registry.apps.cloudfitdsop.com/ubi7-golden:7.7
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN groupadd -r mongodb && useradd -r -g mongodb mongodb
+RUN groupadd -r mongodb && useradd --no-log-init -r -g mongodb mongodb
 
 RUN set -eux; \
 	yum update --nogpgcheck --disableplugin=subscription-manager -y; \
-	yum install \
+	yum install --nogpgcheck -y \
 		ca-certificates \
 		jq \
-		numactl;\
+		numactl;
 
 # grab gosu for easy step-down from root (https://github.com/tianon/gosu/releases)
 ENV GOSU_VERSION 1.11
@@ -20,7 +20,7 @@ RUN set -ex; \
 	\
 	savedAptMark="$(yum list installed)"; \
 	yum update; \
-	yum install -y \
+	yum install -y --nogpgcheck \
 	    wget \
 		gnupg \
 		dirmngr; \
@@ -73,11 +73,17 @@ RUN set -x \
 	&& rm -rf /var/lib/mongodb \
 	&& mv /etc/mongod.conf /etc/mongod.conf.orig
 
-RUN mkdir -p /data/db /data/configdb \
-	&& chown -R mongodb:mongodb /data/db /data/configdb
+RUN mkdir -p /data/db /data/configdb /home/mongodb \
+	&& chown -R mongodb:mongodb /data/db /data/configdb /home/mongodb
 VOLUME /data/db /data/configdb
 
+# Disable Ctrl+Alt+Del burst action
+RUN echo CtrlAltDelBurstAction=none >> /etc/systemd/system.conf
+
 COPY docker-entrypoint.sh /usr/local/bin/
+
+USER mongodb:mongodb
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 27017
