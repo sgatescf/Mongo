@@ -8,9 +8,6 @@ RUN set -eux; \
 		ca-certificates \
 		jq \
 		numactl;\
-	if ! command -v ps > /dev/null; then \
-		yum install -y --without-recommends procps; \
-	fi; 
 
 # grab gosu for easy step-down from root (https://github.com/tianon/gosu/releases)
 ENV GOSU_VERSION 1.11
@@ -23,7 +20,11 @@ RUN set -ex; \
 	\
 	savedAptMark="$(yum list installed)"; \
 	yum update; \
-	yum install -y wget; \
+	yum install -y \
+	    wget \
+		gnupg \
+		dirmngr; \
+	\
 	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$ARCH"; \
 	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$ARCH.asc"; \
 	export GNUPGHOME="$(mktemp -d)"; \
