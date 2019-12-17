@@ -7,15 +7,14 @@ RUN set -eux; \
 	yum install \
 		ca-certificates \
 		jq \
-		numactl \
-	; \
+		numactl;\
 	if ! command -v ps > /dev/null; then \
 		yum install -y --without-recommends procps; \
-	fi; \
-	rm -rf /var/lib/apt/lists/*
+	fi; 
 
 # grab gosu for easy step-down from root (https://github.com/tianon/gosu/releases)
 ENV GOSU_VERSION 1.11
+
 # grab "js-yaml" for parsing mongod's YAML config files (https://github.com/nodeca/js-yaml/releases)
 ENV JSYAML_VERSION 3.13.0
 ENV ARCH amd64
@@ -25,17 +24,6 @@ RUN set -ex; \
 	savedAptMark="$(yum list installed)"; \
 	yum update; \
 	yum install -y wget; \
-	 \
-	if ! command -v gpg > /dev/null; then \
-		yum install -y --no-install-recommends gnupg dirmngr; \
-		savedAptMark="$savedAptMark gnupg dirmngr"; \
-	elif gpg --version | grep -q '^gpg (GnuPG) 1\.'; then \
-# "This package provides support for HKPS keyservers." (GnuPG 1.x only)
-		yum install -y --no-install-recommends gnupg-curl; \
-	fi; \
-	rm -rf /var/lib/apt/lists/*; \
-	\
-	# $ARCH="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
 	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$ARCH"; \
 	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$ARCH.asc"; \
 	export GNUPGHOME="$(mktemp -d)"; \
@@ -48,11 +36,8 @@ RUN set -ex; \
 	gosu nobody true; \
 	\
 	wget -O /js-yaml.js "https://github.com/nodeca/js-yaml/raw/${JSYAML_VERSION}/dist/js-yaml.js";
-# TODO some sort of download verification here
-	# \
-	# apt-mark auto '.*' > /dev/null; \
-	# apt-mark manual $savedAptMark > /dev/null; \
-	# yum purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
+
+    # TODO some sort of download verification here
 
 RUN mkdir /docker-entrypoint-initdb.d
 
@@ -62,10 +47,6 @@ RUN set -ex; \
 	for key in $GPG_KEYS; do \
 		gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
 	done;
-	# gpg --batch --export $GPG_KEYS > /etc/apt/trusted.gpg.d/mongodb.gpg; \
-	# command -v gpgconf && gpgconf --kill all || :; \
-	# rm -r "$GNUPGHOME"; \
-	# apt-key list
 
 # Allow build-time overrides (eg. to build image with MongoDB Enterprise version)
 # Options for MONGO_PACKAGE: mongodb-org OR mongodb-enterprise
@@ -74,12 +55,9 @@ RUN set -ex; \
 ARG MONGO_PACKAGE=mongodb-org
 ARG MONGO_REPO=repo.mongodb.org
 ENV MONGO_PACKAGE=${MONGO_PACKAGE} MONGO_REPO=${MONGO_REPO}
-ENV DEBIAN_FRONTEND=noninteractive
 
 ENV MONGO_MAJOR 4.2
 ENV MONGO_VERSION 4.2.2
-# bashbrew-architectures:amd64 s390x
-# RUN echo "deb http://$MONGO_REPO/apt/ubuntu bionic/${MONGO_PACKAGE%-unstable}/$MONGO_MAJOR multiverse" | tee "/etc/apt/sources.list.d/${MONGO_PACKAGE%-unstable}.list"
 
 RUN set -x \
 	&& yum-config-manager --add-repo=https://repo.mongodb.org/yum/redhat/7Server/$MONGO_PACKAGE/$MONGO_MAJOR/x86_64/ \
